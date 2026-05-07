@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OD Team Tracker — bKash</title>
+<style>
+    /* ============ RESET + BASE ============ */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #1F1F1F; background: #F5F5F7; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+    body { padding: 16px; font-size: 13px; line-height: 1.5; }
+
+    .app {
+        max-width: 1400px;
+        margin: 0 auto;
+        background: #FFFFFF;
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    /* ============ HEADER ============ */
+    header.top {
+        background: linear-gradient(135deg, #E2136E 0%, #9C0F4D 100%);
+        color: #fff;
+        padding: 14px 22px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+    .top-left .title { font-size: 18px; font-weight: 700; letter-spacing: -0.2px; }
+    .top-left .subtitle { font-size: 11px; font-weight: 400; opacity: 0.85; margin-top: 2px; }
+    .top-right { display: flex; align-items: center; gap: 12px; font-size: 11px; }
+    .freshness { opacity: 0.92; }
+    .freshness .stamp { font-weight: 600; }
+    .btn-refresh {
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.25);
+        color: #fff;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex; align-items: center; gap: 5px;
+        transition: background 0.15s;
+    }
+    .btn-refresh:hover { background: rgba(255,255,255,0.28); }
+    .btn-refresh:disabled { opacity: 0.5; cursor: wait; }
+    .btn-refresh .spin { display: inline-block; transition: transform 0.5s; }
+    .btn-refresh.loading .spin { animation: spin 0.8s linear infinite; }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* ============ PULSE STRIP ============ */
+    .pulse {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 1px;
+        background: #EFEFEF;
+    }
+    .pulse-tile { background: #FFFFFF; padding: 12px 18px; }
+    .pulse-tile .label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: #888; font-weight: 600; }
+    .pulse-tile .value { font-size: 26px; font-weight: 700; line-height: 1; margin-top: 3px; color: #1F1F1F; }
+    .pulse-tile.alert .value { color: #C62828; }
+    .pulse-tile .sub { font-size: 10px; color: #999; margin-top: 3px; }
+
+    /* ============ FILTER BAR ============ */
+    .filters {
+        display: flex; flex-wrap: wrap; gap: 8px;
+        padding: 10px 14px;
+        background: #FAFAFA;
+        border-top: 1px solid #EFEFEF;
+        border-bottom: 1px solid #EFEFEF;
+        align-items: center;
+    }
+    .filters .grow { flex: 1; min-width: 200px; }
+    .input, .select {
+        height: 32px;
+        background: #FFFFFF;
+        border: 1px solid #E0E0E0;
+        border-radius: 6px;
+        padding: 0 10px;
+        font-size: 12px;
+        font-family: inherit;
+        color: #1F1F1F;
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input:focus, .select:focus { border-color: #E2136E; box-shadow: 0 0 0 3px rgba(226,19,110,0.12); }
+    .input { width: 100%; }
+    .select { cursor: pointer; padding-right: 28px; appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'><polyline points='6 9 12 15 18 9'></polyline></svg>"); background-repeat: no-repeat; background-position: right 8px center; }
+    .search-wrap { position: relative; flex: 1; min-width: 220px; }
+    .search-wrap .icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #999; font-size: 13px; pointer-events: none; }
+    .search-wrap .input { padding-left: 30px; }
+    .checkbox { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #555; cursor: pointer; user-select: none; }
+    .checkbox input { cursor: pointer; }
+    .preset-chips { display: flex; gap: 4px; }
+    .chip {
+        font-size: 11px;
+        padding: 5px 10px;
+        background: #FFFFFF;
+        border: 1px solid #E0E0E0;
+        border-radius: 14px;
+        cursor: pointer;
+        color: #555;
+        font-family: inherit;
+        white-space: nowrap;
+        transition: all 0.15s;
+    }
+    .chip:hover { border-color: #999; }
+    .chip.active { background: #E2136E; border-color: #E2136E; color: #fff; font-weight: 600; }
+    .btn-clear {
+        font-size: 11px;
+        padding: 5px 10px;
+        background: transparent;
+        border: none;
+        color: #E2136E;
+        cursor: pointer;
+        font-family: inherit;
+        font-weight: 600;
+    }
+    .btn-clear:hover { text-decoration: underline; }
+    .btn-clear:disabled { color: #ccc; cursor: default; text-decoration: none; }
+
+    /* ============ TABS ============ */
+    .tabs {
+        display: flex;
+        padding: 0 14px;
+        background: #FFFFFF;
+        border-bottom: 1px solid #EFEFEF;
+    }
+    .tab {
+        padding: 11px 16px;
+        font-size: 12px;
+        font-weight: 500;
+        color: #777;
+        cursor: pointer;
+        border-bottom: 2px solid transparent;
+        transition: color 0.15s, border-color 0.15s;
+        font-family: inherit;
+        background: transparent;
+        border-left: none; border-right: none; border-top: none;
+        margin-bottom: -1px;
+    }
+    .tab:hover { color: #1F1F1F; }
+    .tab.active { color: #E2136E; border-bottom-color: #E2136E; }
+
+    /* ============ MAIN LAYOUT ============ */
+    .body {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        min-height: 500px;
+    }
+    .main {
+        padding: 14px 16px;
+        overflow-y: auto;
+    }
+    .sidebar {
+        background: #FAFAFA;
+        border-left: 1px solid #EFEFEF;
+        padding: 14px 14px;
+        font-size: 12px;
+        display: flex; flex-direction: column; gap: 16px;
+    }
+
+    /* ============ MAIN — GROUP HEADERS + TASKS ============ */
+    .group-header {
+        display: flex; align-items: center; gap: 10px;
+        padding: 6px 4px 8px;
+        margin-bottom: 6px;
+        border-bottom: 2px solid #E2136E;
+        font-weight: 600;
+        font-size: 13px;
+    }
+    .group-header .count { color: #888; font-size: 11px; font-weight: 500; }
+    .group-header .ov-pill { background: #FCE4EC; color: #C62828; padding: 1px 7px; border-radius: 8px; font-weight: 600; font-size: 10px; }
+    .group-block { margin-bottom: 16px; }
+
+    .task {
+        display: flex; gap: 10px;
+        padding: 8px 10px;
+        margin-bottom: 5px;
+        background: #FAFAFA;
+        border-radius: 6px;
+        border-left: 3px solid #BDBDBD;
+        font-size: 12px;
+        align-items: flex-start;
+    }
+    .task.red { border-left-color: #D32F2F; background: #FFEBEE; }
+    .task.amber { border-left-color: #F57C00; background: #FFF3E0; }
+    .task.green { border-left-color: #2E7D32; background: #FAFAFA; }
+    .task.done { border-left-color: #BDBDBD; background: #F5F5F5; opacity: 0.65; }
+    .task.held { border-left-color: #B45F06; background: #FFF8E1; }
+    .task.active { border-left-color: #1F4E79; background: #E3F2FD; }
+
+    .task .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .red .dot { background: #D32F2F; }
+    .amber .dot { background: #F57C00; }
+    .green .dot { background: #2E7D32; }
+    .done .dot { background: #9E9E9E; }
+    .held .dot { background: #B45F06; }
+    .active .dot { background: #1F4E79; }
+    .active .meta .rel { color: #1F4E79; font-weight: 600; }
+
+    .task .body-col { flex: 1; min-width: 0; }
+    .task .title { font-weight: 600; font-size: 12px; color: #1F1F1F; line-height: 1.35; }
+    .task .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 3px; font-size: 11px; color: #666; }
+    .task .meta .lead { font-weight: 600; color: #444; }
+    .task .meta .pillar { color: #888; font-size: 10px; padding: 1px 6px; background: rgba(0,0,0,0.05); border-radius: 4px; }
+    .task .meta .deadline { font-weight: 500; color: #444; }
+    .task .meta .rel { font-size: 10px; color: #888; }
+    .red .meta .rel { color: #C62828; font-weight: 600; }
+    .amber .meta .rel { color: #E65100; font-weight: 600; }
+    .task .sup { font-size: 10px; color: #999; margin-top: 2px; font-style: italic; }
+    .task .badge {
+        display: inline-block; font-size: 9px; padding: 1px 5px; border-radius: 8px;
+        margin-left: 5px; vertical-align: middle; font-weight: 700; letter-spacing: 0.4px;
+    }
+    .task .badge.hero { background: #E2136E; color: #fff; }
+
+    /* ============ FLAT LIST ROW ============ */
+    .flat-row {
+        display: grid;
+        grid-template-columns: 14px minmax(180px, 1fr) 220px 90px 90px 70px 90px;
+        gap: 10px;
+        padding: 8px 8px;
+        align-items: center;
+        font-size: 12px;
+        border-bottom: 1px solid #EFEFEF;
+    }
+    .flat-row:hover { background: #FAFAFA; }
+    .flat-row .sort-h { cursor: pointer; user-select: none; }
+    .flat-row .sort-h:hover { color: #E2136E; }
+    .flat-row .sort-h .arrow { display: inline-block; margin-left: 3px; opacity: 0.4; font-size: 9px; }
+    .flat-row .sort-h.active .arrow { opacity: 1; color: #E2136E; }
+    .flat-row .pill-status { font-size: 10px; padding: 2px 7px; border-radius: 8px; text-align: center; font-weight: 600; }
+    .pill-ns { background: #F5F5F5; color: #595959; }
+    .pill-ip { background: #DAE8FC; color: #1F4E79; }
+    .pill-oh { background: #FFF2CC; color: #996515; }
+    .pill-d { background: #D5E8D4; color: #2E7D32; }
+
+    /* ============ SIDEBAR ============ */
+    .side-section .heading {
+        font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+        margin-bottom: 6px;
+        display: flex; align-items: center; gap: 6px;
+    }
+    .side-section.overdue .heading { color: #C62828; }
+    .side-section.atrisk .heading { color: #B45F06; }
+    .side-section.onhold .heading { color: #6E6E6E; }
+    .side-section .count-badge {
+        display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 10px; font-weight: 700;
+    }
+    .side-section.overdue .count-badge { background: #FCE4EC; color: #C62828; }
+    .side-section.atrisk .count-badge { background: #FFE0B2; color: #B45F06; }
+    .side-section.onhold .count-badge { background: #E0E0E0; color: #555; }
+
+    .side-item {
+        padding: 5px 0;
+        font-size: 11px;
+        display: flex; gap: 6px; align-items: baseline;
+        border-bottom: 1px dashed #EAEAEA;
+    }
+    .side-item:last-child { border-bottom: none; }
+    .side-item .name { flex: 1; min-width: 0; }
+    .side-item .who { font-size: 10px; color: #888; }
+    .side-item .days { font-weight: 600; font-size: 11px; flex-shrink: 0; }
+    .side-section.overdue .side-item .days { color: #C62828; }
+    .side-section.atrisk .side-item .days { color: #E65100; }
+    .side-item .reason { display: block; font-size: 10px; color: #888; margin-top: 1px; }
+    .more-link {
+        font-size: 10px; color: #E2136E; cursor: pointer; font-weight: 600;
+        background: transparent; border: none; padding: 4px 0; font-family: inherit;
+    }
+    .more-link:hover { text-decoration: underline; }
+    .side-empty { font-size: 11px; color: #aaa; font-style: italic; }
+
+    /* ============ FOOTER NOTE ============ */
+    .footnote {
+        background: #FAFAFA;
+        border-top: 1px solid #EFEFEF;
+        padding: 8px 16px;
+        font-size: 10px;
+        color: #888;
+        display: flex; flex-wrap: wrap; gap: 12px;
+        align-items: center;
+    }
+    .footnote .legend-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+
+    /* ============ ERROR BANNER ============ */
+    .error-banner {
+        background: #FFEBEE;
+        border-left: 4px solid #D32F2F;
+        padding: 10px 16px;
+        font-size: 12px;
+        color: #9A0000;
+        display: none;
+    }
+    .error-banner.show { display: block; }
+    .error-banner .title { font-weight: 700; margin-bottom: 2px; }
+    .error-banner .detail { color: #C62828; font-size: 11px; }
+
+    /* ============ EMPTY STATE ============ */
+    .empty {
+        text-align: center;
+        padding: 40px 20px;
+        color: #999;
+        font-size: 13px;
+    }
+    .empty .big { font-size: 18px; color: #666; margin-bottom: 6px; font-weight: 600; }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 900px) {
+        .body { grid-template-columns: 1fr; }
+        .sidebar { border-left: none; border-top: 1px solid #EFEFEF; }
+        .pulse { grid-template-columns: repeat(2, 1fr); }
+    }
+</style>
+</head>
+<body>
+<div class="app">
+
+    <header class="top">
+        <div class="top-left">
+            <div class="title">OD Team Tracker</div>
+            <div class="subtitle">bKash · live view from team plan</div>
+        </div>
+        <div class="top-right">
+            <span class="freshness">Updated <span class="stamp" id="freshStamp">—</span></span>
+            <button class="btn-refresh" id="refreshBtn" type="button">
+                <span class="spin">↻</span><span>Refresh</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="error-banner" id="errorBanner">
+        <div class="title" id="errorTitle">Could not load data</div>
+        <div class="detail" id="errorDetail"></div>
+    </div>
+
+    <div class="pulse">
+        <div class="pulse-tile">
+            <div class="label">Active</div>
+            <div class="value" id="kActive">—</div>
+            <div class="sub">tasks not done or on-hold</div>
+        </div>
+        <div class="pulse-tile alert">
+            <div class="label">Overdue</div>
+            <div class="value" id="kOverdue">—</div>
+            <div class="sub">past deadline, not done</div>
+        </div>
+        <div class="pulse-tile">
+            <div class="label">Due This Month</div>
+            <div class="value" id="kThisMonth">—</div>
+            <div class="sub" id="kThisMonthSub">—</div>
+        </div>
+        <div class="pulse-tile">
+            <div class="label">On Hold</div>
+            <div class="value" id="kHeld">—</div>
+            <div class="sub">waiting on something</div>
+        </div>
+    </div>
+
+    <div class="filters">
+        <div class="search-wrap">
+            <span class="icon">⌕</span>
+            <input class="input" type="text" id="search" placeholder="Search initiative…">
+        </div>
+        <select class="select" id="fPerson"><option value="">All people</option></select>
+        <select class="select" id="fPillar"><option value="">All pillars</option></select>
+        <select class="select" id="fStatus">
+            <option value="">All status</option>
+            <option value="__overdue__">Overdue</option>
+            <option value="__atrisk__">At risk (≤14d)</option>
+            <option value="Not Started">Not Started</option>
+            <option value="In Progress">In Progress</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Done">Done</option>
+        </select>
+        <div class="preset-chips" id="dateChips">
+            <button class="chip" data-preset="all" type="button">All</button>
+            <button class="chip" data-preset="week" type="button">This Week</button>
+            <button class="chip" data-preset="month" type="button">This Month</button>
+            <button class="chip" data-preset="next" type="button">Next Month</button>
+            <button class="chip" data-preset="quarter" type="button">This Quarter</button>
+        </div>
+        <select class="select" id="fMe" title="Personal view">
+            <option value="">Viewing as… everyone</option>
+        </select>
+        <label class="checkbox" title="Include tasks where you are Support, not just Lead">
+            <input type="checkbox" id="meIncludeSupport"> +Support
+        </label>
+        <label class="checkbox">
+            <input type="checkbox" id="showDone"> Show Done
+        </label>
+        <button class="btn-clear" id="btnClear" type="button">Clear filters</button>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" data-tab="person" type="button">By person</button>
+        <button class="tab" data-tab="pillar" type="button">By pillar</button>
+        <button class="tab" data-tab="flat" type="button">Flat list</button>
+    </div>
+
+    <div class="body">
+        <main class="main" id="main"></main>
+        <aside class="sidebar" id="sidebar"></aside>
+    </div>
+
+    <div class="footnote">
+        <span><span class="legend-dot" style="background:#D32F2F;"></span>Overdue</span>
+        <span><span class="legend-dot" style="background:#F57C00;"></span>≤14 days</span>
+        <span><span class="legend-dot" style="background:#2E7D32;"></span>>14 days</span>
+        <span><span class="legend-dot" style="background:#B45F06;"></span>On hold</span>
+        <span style="margin-left:auto;color:#aaa;">Data refreshes every ~5 min from the team plan</span>
+    </div>
+
+</div>
+
+<!-- PapaParse for CSV parsing -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<script>
+// ============ CONFIG ============
+// Replace this URL with your published Google Sheets CSV URL once the Sheet is set up.
+// To get it: in your Sheet, File → Share → Publish to web → CSV → choose tab → publish → copy URL.
+// Leave as the placeholder below to use embedded sample data for review.
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQha2yp1jGuDIfRCJyjdrZi2VzVw62SvIYwL6Fxadg2dYpcFvItaSTCOLJLjqmNTta73FtZaiUsxqqf/pub?output=csv";
+
+// Embedded fallback data (the cleaned plan as of generation)
+const EMBEDDED_CSV = `Pillar,Parent Initiative,Initiative,Priority,Details,Lead,Support,Deadline,Status
+Talent Development & Performance Management,Business Critical Capability Development,Payment/Savings/Loan/Remittance Programs — Q2 2026,Impresses the Decisionmaker,,Nafiz,Meheraf,2026-06-30,Not Started
+Talent Development & Performance Management,Business Critical Capability Development,Payment/Savings/Loan/Remittance Programs — Q3 2026,Impresses the Decisionmaker,,Nafiz,Meheraf,2026-09-30,Not Started
+Talent Development & Performance Management,Business Critical Capability Development,Payment/Savings/Loan/Remittance Programs — Q4 2026,Impresses the Decisionmaker,,Nafiz,Meheraf,2026-12-31,Not Started
+Talent Development & Performance Management,Digital Capability Interventions,Digital Core Exploration,Impresses the Decisionmaker,,Meheraf,Tarif,2026-06-30,Not Started
+Talent Development & Performance Management,Digital Capability Interventions,Implementation,Impresses the Decisionmaker,,Tarif,Meheraf,2026-12-31,In Progress
+Talent Development & Performance Management,Executive Leadership Program (bLX C-Suite),bLX C-Suite for CXOs,HERO Product,On Hold for Dollar Issues,Nafiz,,2026-09-30,On Hold
+Talent Development & Performance Management,Executive Leadership Program (bLX C-Suite),CXO Successor Development Intervention,HERO Product,,Nafiz,Meheraf,2026-12-31,Not Started
+Talent Development & Performance Management,Functional Capability Programs,Functional Capability — Q1 2026,Solves Real Problem,Top 3 functional trainings per division (nomination based),Meheraf,,2026-03-31,Done
+Talent Development & Performance Management,Functional Capability Programs,Functional Capability — Q2 2026,Solves Real Problem,Top 3 functional trainings per division (nomination based),Meheraf,,2026-06-30,In Progress
+Talent Development & Performance Management,Functional Capability Programs,Functional Capability — Q3 2026,Solves Real Problem,Top 3 functional trainings per division (nomination based),Meheraf,,2026-09-30,In Progress
+Talent Development & Performance Management,Functional Capability Programs,Functional Capability — Q4 2026,Solves Real Problem,Top 3 functional trainings per division (nomination based),Meheraf,,2026-12-31,In Progress
+Talent Development & Performance Management,Her Leadership,Her Leadership program,HERO Product,,Meheraf,Maisha + Tarif,2026-06-30,Not Started
+Talent Development & Performance Management,Job Rotation,Structured job rotation framework,Solves Real Problem,,Nafiz,Meheraf,2026-06-30,Not Started
+Talent Development & Performance Management,Level Up,Level Up — May 2026,Solves Real Problem,,Tarif,Meheraf,2026-05-31,In Progress
+Talent Development & Performance Management,Level Up,Level Up — Jun 2026,Solves Real Problem,,Tarif,Meheraf,2026-06-30,In Progress
+Talent Development & Performance Management,Level Up,Level Up — Aug 2026,Solves Real Problem,,Tarif,Meheraf,2026-08-31,Not Started
+Talent Development & Performance Management,Level Up,Level Up — Sep 2026,Solves Real Problem,,Tarif,Meheraf,2026-09-30,Not Started
+Talent Development & Performance Management,Level Up,Level Up — Oct 2026,Solves Real Problem,,Tarif,Meheraf,2026-10-31,Not Started
+Talent Development & Performance Management,Level Up,Level Up — Nov 2026,Solves Real Problem,,Tarif,Meheraf,2026-11-30,Not Started
+Talent Development & Performance Management,Level Up,Level Up — Dec 2026,Solves Real Problem,,Tarif,Meheraf,2026-12-31,Not Started
+Talent Development & Performance Management,Online Learning Platform,Coursera (nomination based),Important for Consistency,On hold pending budget approval — dollar constraints,Nafiz,Meheraf + Tarif,2026-06-30,On Hold
+Talent Development & Performance Management,Performance Management Cycle,PIP Guideline revision,Important for Consistency,,Meheraf,HRBP,2026-02-28,Not Started
+Talent Development & Performance Management,Performance Management Cycle,Drive performance appraisal (FY25),Important for Consistency,System readiness,Meheraf,HRBP,2026-03-31,Done
+Talent Development & Performance Management,Performance Management Cycle,Drive goal setting,Important for Consistency,System readiness,Meheraf,HRBP,2026-04-30,In Progress
+Talent Development & Performance Management,Performance Management Cycle,Critical Role/People guideline revision,Important for Consistency,,Meheraf,HRBP,2026-06-30,Not Started
+Talent Development & Performance Management,Performance Management Cycle,Drive mid-year review,Important for Consistency,Communication,Meheraf,HRBP,2026-08-31,Not Started
+Talent Development & Performance Management,bKash Core Programs,New Course Exploration,Solves Real Problem,New Courses by Mar,Meheraf,Tarif,2026-03-31,In Progress
+Talent Development & Performance Management,bKash Core Programs,Creative Solution to Revive,Solves Real Problem,,Tarif,Meheraf,,In Progress
+Talent Development & Performance Management,bLX Pro,Chapter 2.2: Coaching Practitioner,Important for Consistency,,Nafiz,Meheraf + Tarif,2026-06-30,Not Started
+Talent Development & Performance Management,bLX Pro,Chapter 3: Strategy Execution & Change Management,Important for Consistency,,Nafiz,Meheraf + Tarif,2026-09-30,In Progress
+Employee Experience & Culture,Engagement Programs,New Year Gift,Important for Consistency,,Nafiz,Maisha + Tarif,2026-01-01,Done
+Employee Experience & Culture,Engagement Programs,Women's Day,Important for Consistency,,Maisha,,2026-03-08,Done
+Employee Experience & Culture,Engagement Programs,ঐতিহ্যের উৎসব (Pohela Boishakh),Important for Consistency,,Maisha,Tarif,2026-04-14,Done
+Employee Experience & Culture,Engagement Programs,bKash Anniversary,Important for Consistency,,Full OD,,2026-07-24,Not Started
+Employee Experience & Culture,Engagement Programs,bKash Got Talent,Impresses the Decisionmaker,,Nafiz,Maisha + Tarif,2026-07-31,In Progress
+Employee Experience & Culture,Engagement Programs,BPL Season 1 (Aug–Sep),Important for Consistency,,Maisha,Tarif,2026-09-30,Not Started
+Employee Experience & Culture,Engagement Programs,Men's Day,Impresses the Decisionmaker,,Maisha,,2026-11-19,Not Started
+Employee Experience & Culture,Engagement Programs,BPL Season 2 (Nov–Dec),Important for Consistency,,Maisha,Tarif,2026-12-31,Not Started
+Employee Experience & Culture,Engagement Programs,Parents/Family Day,HERO Product,,Maisha,Tarif,2027-03-31,Not Started
+Employee Experience & Culture,Engagement Programs,Employee Night,HERO Product,,Full OD,,2026-07-31,In Progress
+Employee Experience & Culture,Exemplify Projects,b.Special (Employee Offerings),HERO Product,Must launch before 10th Ramadan,Maisha,Nafiz + Tarif,2026-03-31,In Progress
+Employee Experience & Culture,Exemplify Projects,Investment Fair 2025,Important for Consistency,,Maisha,Nafiz + Tarif,2026-05-31,Not Started
+Employee Experience & Culture,New Joiners' Experience,New Joiners' Induction — Apr 2026,Important for Consistency,1 induction after every 3 joinings,Maisha,,2026-04-30,Done
+Employee Experience & Culture,New Joiners' Experience,New Joiners' Induction — Jun 2026,Important for Consistency,1 induction after every 3 joinings,Maisha,,2026-06-30,In Progress
+Employee Experience & Culture,New Joiners' Experience,CHRO Connects (kick-off),HERO Product,,Maisha,,2026-06-30,In Progress
+Employee Experience & Culture,New Joiners' Experience,Mini induction via V-learning Day 1,Solves Real Problem,bKash way,Meheraf,Maisha + Tarif,2026-06-30,Not Started
+Employee Experience & Culture,New Joiners' Experience,New Joiners' Induction — Aug 2026,Important for Consistency,1 induction after every 3 joinings,Maisha,,2026-08-31,In Progress
+Employee Experience & Culture,New Joiners' Experience,New Joiners' Induction — Oct 2026,Important for Consistency,1 induction after every 3 joinings,Maisha,,2026-10-31,In Progress
+Employee Experience & Culture,New Joiners' Experience,New Joiners' Induction — Dec 2026,Important for Consistency,1 induction after every 3 joinings,Maisha,,2026-12-31,In Progress
+Employee Experience & Culture,Recognition,Long Service Awards,Important for Consistency,Collect names by Nov,Maisha,,2026-07-31,Not Started
+Employee Experience & Culture,Recognition,CEO's Award,Important for Consistency,Collect names by Dec,Maisha,,2026-07-31,Not Started
+Employee Experience & Culture,STAR Awards,Revamp: STAR Awards (entire mechanism),HERO Product,,Nafiz,Maisha,2026-06-30,Not Started
+Employee Experience & Culture,STAR Awards,STAR Awards H1,Important for Consistency,,Maisha,,2026-08-31,Not Started
+Employee Experience & Culture,STAR Awards,STAR Awards H2,Important for Consistency,,Maisha,,2027-02-28,Not Started
+Employee Experience & Culture,Values & Culture Activations,"Physical & Digital Activations (Culture on Wall, etc.)",Solves Real Problem,Values on Wall,Nafiz,Maisha,2026-12-31,In Progress
+Employee Experience & Culture,be Well,be well: health camp (checkup),Solves Real Problem,,Tarif,Maisha,2026-04-30,In Progress
+Employee Experience & Culture,be Well,be well: small habits big changes — May 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-05-31,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Jun 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-06-30,Not Started
+Employee Experience & Culture,be Well,be well: wellbeing week,Important for Consistency,,Tarif,Maisha,2026-07-02,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Jul 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-07-31,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Aug 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-08-31,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Sep 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-09-30,Not Started
+Employee Experience & Culture,be Well,be well: World Mental Health Day,Important for Consistency,,Tarif,Maisha,2026-10-11,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Oct 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-10-31,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Nov 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-11-30,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Dec 2026,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2026-12-31,Not Started
+Employee Experience & Culture,be Well,be well: small habits big changes — Jan 2027,Important for Consistency,monthly byte-sized healthcare insights,Tarif,Maisha,2027-01-31,Not Started
+HR Strategy & Organizational Leadership,HR Strategy 2026,"R&D, Alignment, Finalization",Important for Consistency,,Nafiz,HRLT,2026-10-31,Not Started
+HR Strategy & Organizational Leadership,HR Strategy 2026,Roll-out,Important for Consistency,,Nafiz,HRLT,2026-12-31,Not Started
+HR Strategy & Organizational Leadership,IDP Framework,Individual Development Plan (IDP) framework,Solves Real Problem,Weekly 2 times in Ramadan,Nafiz,Tarif,2026-06-30,In Progress
+HR Strategy & Organizational Leadership,IDP Framework,Roll out LDP,Solves Real Problem,,Nafiz,Meheraf,2026-06-30,In Progress
+HR Strategy & Organizational Leadership,IDP Framework,Divisional IDP Framework,Solves Real Problem,,Nafiz,Meheraf,2026-06-30,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — May 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-05-31,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Jun 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-06-30,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Jul 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-07-31,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Aug 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-08-31,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Sep 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-09-30,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Oct 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-10-31,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Nov 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-11-30,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Dec 2026,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2026-12-31,In Progress
+HR Strategy & Organizational Leadership,Leadership Bytes,Leadership Bytes — Jan 2027,Important for Consistency,Bi-weekly leadership tips emailer (S.T.E.E.R. framework),Meheraf,Tarif,2027-01-31,In Progress
+HR Strategy & Organizational Leadership,MC Vlog,MC Vlog — Jun 2026,HERO Product,,Nafiz,Maisha,2026-06-30,Not Started
+HR Strategy & Organizational Leadership,MC Vlog,MC Vlog — Jul 2026,HERO Product,,Nafiz,Maisha,2026-07-31,Not Started
+HR Strategy & Organizational Leadership,MC Vlog,MC Vlog — Aug 2026,HERO Product,,Nafiz,Maisha,2026-08-31,Not Started
+HR Strategy & Organizational Leadership,MC Vlog,MC Vlog — Sep 2026,HERO Product,,Nafiz,Maisha,2026-09-30,Not Started
+HR Strategy & Organizational Leadership,MC Vlog,MC Vlog — Oct 2026,HERO Product,,Nafiz,Maisha,2026-10-31,Not Started
+HR Strategy & Organizational Leadership,MC Vlog,MC Vlog — Nov 2026,HERO Product,,Nafiz,Maisha,2026-11-30,Not Started
+HR Strategy & Organizational Leadership,MC Vlog,MC Vlog — Dec 2026,HERO Product,,Nafiz,Maisha,2026-12-31,Not Started
+HR Strategy & Organizational Leadership,Mentorship,Divisional Mentorship Framework,HERO Product,,Nafiz,Meheraf,2026-06-30,Not Started
+HR Strategy & Organizational Leadership,Mentorship,Mentor Pool (Selective),HERO Product,,Nafiz,Tarif,2026-09-30,In Progress
+HR Strategy & Organizational Leadership,Succession & Critical Role Planning,Identification matrix for EVP succession,Solves Real Problem,Weekly 2 times in Ramadan,Nafiz,Tarif,2026-03-31,In Progress
+HR Strategy & Organizational Leadership,Succession & Critical Role Planning,Identification matrix for Critical roles/resources,Solves Real Problem,Weekly 2 times in Ramadan,Nafiz,Tarif,2026-03-31,In Progress
+HR Strategy & Organizational Leadership,bKash Masterclass,Masterclass session — Jul 2026,HERO Product,Ted-Talk like sessions by internal SMEs,Nafiz,Tarif,2026-07-31,In Progress
+HR Strategy & Organizational Leadership,bKash Masterclass,Masterclass session — Aug 2026,HERO Product,Ted-Talk like sessions by internal SMEs,Nafiz,Tarif,2026-08-31,In Progress
+HR Strategy & Organizational Leadership,bKash Masterclass,Masterclass session — Sep 2026,HERO Product,Ted-Talk like sessions by internal SMEs,Nafiz,Tarif,2026-09-30,In Progress
+HR Strategy & Organizational Leadership,bKash Masterclass,Masterclass session — Oct 2026,HERO Product,Ted-Talk like sessions by internal SMEs,Nafiz,Tarif,2026-10-31,In Progress
+HR Strategy & Organizational Leadership,bKash Masterclass,Masterclass session — Nov 2026,HERO Product,Ted-Talk like sessions by internal SMEs,Nafiz,Tarif,2026-11-30,In Progress
+HR Strategy & Organizational Leadership,bKash Masterclass,Masterclass session — Dec 2026,HERO Product,Ted-Talk like sessions by internal SMEs,Nafiz,Tarif,2026-12-31,In Progress
+HR Strategy & Organizational Leadership,bKash Masterclass,Masterclass session — Jan 2027,HERO Product,Ted-Talk like sessions by internal SMEs,Nafiz,Tarif,2027-01-31,In Progress
+HR Strategy & Organizational Leadership,bTalk,bTalk Season 1 (6 Episodes),HERO Product,Podcast model talk by bKash MC and selective EVPs,Nafiz,Maisha + Tarif,2026-09-30,In Progress
+HR Analytics,OD Quarterly Dashboard,OD Dashboard — Q1 2026,Important for Consistency,1st draft by end of February,Tarif,,2026-03-31,In Progress
+HR Analytics,OD Quarterly Dashboard,OD Dashboard — Q2 2026,Important for Consistency,1st draft by end of February,Tarif,,2026-06-30,In Progress
+HR Analytics,OD Quarterly Dashboard,OD Dashboard — Q3 2026,Important for Consistency,1st draft by end of February,Tarif,,2026-09-30,In Progress
+HR Analytics,OD Quarterly Dashboard,OD Dashboard — Q4 2026,Important for Consistency,1st draft by end of February,Tarif,,2026-12-31,In Progress
+`;
+
+// Required columns the parser expects to find in the CSV header row
+const REQUIRED_COLS = ['Pillar', 'Initiative', 'Lead', 'Deadline', 'Status'];
+
+// Today (used for days-to-deadline calculations)
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+
+// State
+let tasks = [];
+let lastFetched = null;
+let usingEmbedded = false;
+
+// Filter state
+const filterState = {
+    search: '', person: '', pillar: '', status: '',
+    datePreset: 'all', dateFrom: null, dateTo: null,
+    me: '', meIncludeSupport: false,
+    showDone: false,
+    tab: 'person',
+    flatSort: { col: 'deadline', dir: 'asc' }
+};
+
+// Sidebar expansion state
+const sidebarExpanded = { overdue: false, atrisk: false, onhold: false };
+
+// ============ DATA LOAD ============
+async function loadData() {
+    const btn = document.getElementById('refreshBtn');
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    let csvText = null;
+    let err = null;
+
+    if (SHEET_CSV_URL && SHEET_CSV_URL !== "PLACEHOLDER_FOR_GOOGLE_SHEETS_CSV_URL") {
+        try {
+            const url = SHEET_CSV_URL + (SHEET_CSV_URL.includes('?') ? '&' : '?') + 'cb=' + Date.now();
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            csvText = await res.text();
+            usingEmbedded = false;
+        } catch (e) {
+            err = e;
+            csvText = EMBEDDED_CSV;
+            usingEmbedded = true;
+        }
+    } else {
+        csvText = EMBEDDED_CSV;
+        usingEmbedded = true;
+    }
+
+    try {
+        const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+        if (parsed.errors && parsed.errors.length) {
+            console.warn('CSV parse warnings:', parsed.errors);
+        }
+
+        // Validate required columns
+        const headers = parsed.meta.fields || [];
+        const missing = REQUIRED_COLS.filter(c => !headers.includes(c));
+        if (missing.length) {
+            throw new Error('Missing required column(s): ' + missing.join(', '));
+        }
+
+        tasks = parsed.data.map(r => normalizeTask(r)).filter(t => t.initiative);
+        lastFetched = new Date();
+        showError(null);
+    } catch (e) {
+        err = err || e;
+        showError(err);
+    } finally {
+        btn.classList.remove('loading');
+        btn.disabled = false;
+    }
+
+    populateFilters();
+    render();
+    updateFreshness();
+}
+
+function normalizeTask(row) {
+    const dlStr = (row['Deadline'] || '').trim();
+    let deadline = null;
+    if (dlStr) {
+        const d = new Date(dlStr);
+        if (!isNaN(d)) { d.setHours(0,0,0,0); deadline = d; }
+    }
+    let days = null;
+    if (deadline) days = Math.round((deadline - TODAY) / 86400000);
+
+    return {
+        pillar: (row['Pillar'] || '').trim(),
+        parent: (row['Parent Initiative'] || '').trim(),
+        initiative: (row['Initiative'] || '').trim(),
+        priority: (row['Priority'] || '').trim(),
+        details: (row['Details'] || '').trim(),
+        lead: (row['Lead'] || '').trim(),
+        support: (row['Support'] || '').trim(),
+        deadline: deadline,
+        deadlineStr: deadline ? formatDate(deadline) : '',
+        days: days,
+        status: (row['Status'] || '').trim()
+    };
+}
+
+function showError(err) {
+    const banner = document.getElementById('errorBanner');
+    if (!err) {
+        banner.classList.remove('show');
+        return;
+    }
+    document.getElementById('errorDetail').textContent =
+        (usingEmbedded ? 'Showing sample data instead. ' : '') + (err.message || String(err));
+    banner.classList.add('show');
+}
+
+function updateFreshness() {
+    const stamp = document.getElementById('freshStamp');
+    if (!lastFetched) { stamp.textContent = '—'; return; }
+    const txt = relativeTime(lastFetched) + (usingEmbedded ? ' (sample data)' : '');
+    stamp.textContent = txt;
+}
+setInterval(updateFreshness, 30000);
+
+// ============ HELPERS ============
+function formatDate(d) {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return d.getDate() + ' ' + months[d.getMonth()];
+}
+function formatDateFull(d) {
+    return formatDate(d) + ' ' + d.getFullYear();
+}
+function relativeTime(d) {
+    const sec = Math.round((new Date() - d) / 1000);
+    if (sec < 30) return 'just now';
+    if (sec < 60) return sec + 's ago';
+    const min = Math.round(sec / 60);
+    if (min < 60) return min + (min === 1 ? ' min' : ' mins') + ' ago';
+    const hr = Math.round(min / 60);
+    if (hr < 24) return hr + (hr === 1 ? ' hr' : ' hrs') + ' ago';
+    return d.toLocaleDateString();
+}
+function urgencyClass(t) {
+    if (t.status === 'Done') return 'done';
+    if (t.status === 'On Hold') return 'held';
+    if (t.days === null) {
+        return t.status === 'In Progress' ? 'active' : 'green';
+    }
+    if (t.days < 0) return 'red';
+    if (t.days <= 14) return 'amber';
+    return t.status === 'In Progress' ? 'active' : 'green';
+}
+function relDays(d) {
+    if (d === null) return '';
+    if (d < 0) return Math.abs(d) + 'd overdue';
+    if (d === 0) return 'today';
+    if (d === 1) return 'tomorrow';
+    return 'in ' + d + 'd';
+}
+function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function statusPill(s) {
+    if (s === 'Done') return '<span class="pill-status pill-d">Done</span>';
+    if (s === 'In Progress') return '<span class="pill-status pill-ip">In Progress</span>';
+    if (s === 'On Hold') return '<span class="pill-status pill-oh">On Hold</span>';
+    return '<span class="pill-status pill-ns">Not Started</span>';
+}
+
+// ============ FILTERS ============
+function populateFilters() {
+    const persons = [...new Set(tasks.map(t => t.lead).filter(Boolean))].sort();
+    const pillars = [...new Set(tasks.map(t => t.pillar).filter(Boolean))].sort();
+
+    const personSel = document.getElementById('fPerson');
+    const meSel = document.getElementById('fMe');
+    const pillarSel = document.getElementById('fPillar');
+
+    personSel.innerHTML = '<option value="">All people</option>' +
+        persons.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+    meSel.innerHTML = '<option value="">Viewing as… everyone</option>' +
+        persons.map(p => `<option value="${escapeHtml(p)}">As ${escapeHtml(p)}</option>`).join('');
+    pillarSel.innerHTML = '<option value="">All pillars</option>' +
+        pillars.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+
+    // Restore persisted "me" preference
+    const savedMe = localStorage.getItem('od_tracker_me') || '';
+    if (savedMe && persons.includes(savedMe)) {
+        meSel.value = savedMe;
+        filterState.me = savedMe;
+    }
+    document.getElementById('meIncludeSupport').checked = localStorage.getItem('od_tracker_meIncludeSupport') === '1';
+    filterState.meIncludeSupport = document.getElementById('meIncludeSupport').checked;
+}
+
+function applyFilters(list) {
+    return list.filter(t => {
+        // Done visibility: explicit "Done" filter overrides the checkbox
+        if (t.status === 'Done') {
+            if (filterState.status === 'Done') {
+                // user explicitly asked for Done — show it
+            } else if (!filterState.showDone) {
+                return false;
+            }
+        }
+
+        // Search across initiative, parent, lead, support, details
+        if (filterState.search) {
+            const q = filterState.search.toLowerCase();
+            const hay = [t.initiative, t.parent, t.lead, t.support, t.details].join(' ').toLowerCase();
+            if (!hay.includes(q)) return false;
+        }
+
+        // Person
+        if (filterState.person && t.lead !== filterState.person) return false;
+
+        // Pillar
+        if (filterState.pillar && t.pillar !== filterState.pillar) return false;
+
+        // Status
+        if (filterState.status === '__overdue__') {
+            if (!(t.days !== null && t.days < 0 && t.status !== 'Done')) return false;
+        } else if (filterState.status === '__atrisk__') {
+            if (!(t.days !== null && t.days >= 0 && t.days <= 14 && t.status !== 'Done')) return false;
+        } else if (filterState.status) {
+            if (t.status !== filterState.status) return false;
+        }
+
+        // Date range
+        if (filterState.dateFrom || filterState.dateTo) {
+            if (!t.deadline) return false;
+            if (filterState.dateFrom && t.deadline < filterState.dateFrom) return false;
+            if (filterState.dateTo && t.deadline > filterState.dateTo) return false;
+        }
+
+        // Personal view (me)
+        if (filterState.me) {
+            const isLead = t.lead === filterState.me;
+            const supportNames = t.support.split(/[+,&]/).map(s => s.trim()).filter(Boolean);
+            const isSupport = supportNames.includes(filterState.me);
+            if (filterState.meIncludeSupport) {
+                if (!isLead && !isSupport) return false;
+            } else {
+                if (!isLead) return false;
+            }
+        }
+
+        return true;
+    });
+}
+
+function dateRangeForPreset(preset) {
+    const now = new Date(TODAY);
+    if (preset === 'all') return [null, null];
+    if (preset === 'week') {
+        const end = new Date(now); end.setDate(end.getDate() + 7);
+        return [now, end];
+    }
+    if (preset === 'month') {
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return [start, end];
+    }
+    if (preset === 'next') {
+        const start = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 2, 0);
+        return [start, end];
+    }
+    if (preset === 'quarter') {
+        const q = Math.floor(now.getMonth() / 3);
+        const start = new Date(now.getFullYear(), q * 3, 1);
+        const end = new Date(now.getFullYear(), q * 3 + 3, 0);
+        return [start, end];
+    }
+    return [null, null];
+}
+
+// ============ KPIs ============
+function computeKPIs() {
+    const now = new Date(TODAY);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const monthName = now.toLocaleString('en-US', { month: 'long' });
+
+    let active = 0, overdue = 0, thisMonth = 0, held = 0;
+    for (const t of tasks) {
+        if (t.status === 'On Hold') { held++; continue; }
+        if (t.status === 'Done') continue;
+        active++;
+        if (t.days !== null && t.days < 0) overdue++;
+        if (t.deadline && t.deadline >= now && t.deadline <= monthEnd) thisMonth++;
+    }
+    document.getElementById('kActive').textContent = active;
+    document.getElementById('kOverdue').textContent = overdue;
+    document.getElementById('kThisMonth').textContent = thisMonth;
+    document.getElementById('kThisMonthSub').textContent = monthName + ' deadlines';
+    document.getElementById('kHeld').textContent = held;
+}
+
+// ============ RENDER ============
+function render() {
+    computeKPIs();
+    renderMain();
+    renderSidebar();
+}
+
+function renderMain() {
+    const filtered = applyFilters(tasks);
+    const main = document.getElementById('main');
+
+    if (filtered.length === 0) {
+        main.innerHTML = '<div class="empty"><div class="big">Nothing matches</div>Try adjusting filters or clicking Clear.</div>';
+        return;
+    }
+
+    if (filterState.tab === 'flat') {
+        main.innerHTML = renderFlat(filtered);
+    } else if (filterState.tab === 'pillar') {
+        main.innerHTML = renderGrouped(filtered, t => t.pillar || 'Unassigned', x => x);
+    } else {
+        main.innerHTML = renderGrouped(filtered, t => t.lead || 'Unassigned', x => x);
+    }
+}
+
+function renderGrouped(list, keyFn, displayFn) {
+    const groups = {};
+    for (const t of list) {
+        const k = keyFn(t);
+        if (!groups[k]) groups[k] = [];
+        groups[k].push(t);
+    }
+    // Sort group keys by load descending
+    const keys = Object.keys(groups).sort((a, b) => groups[b].length - groups[a].length);
+    return keys.map(k => {
+        const items = groups[k].slice().sort((a, b) => {
+            // overdue first, then by deadline, no-deadline last
+            if (a.deadline === null && b.deadline === null) return 0;
+            if (a.deadline === null) return 1;
+            if (b.deadline === null) return -1;
+            return a.deadline - b.deadline;
+        });
+        const overdueN = items.filter(t => t.days !== null && t.days < 0 && t.status !== 'Done').length;
+        const ovPill = overdueN ? `<span class="ov-pill">${overdueN} overdue</span>` : '';
+        return `
+            <div class="group-block">
+                <div class="group-header">
+                    <span>${escapeHtml(displayFn(k))}</span>
+                    <span class="count">${items.length} ${items.length === 1 ? 'task' : 'tasks'}</span>
+                    ${ovPill}
+                </div>
+                ${items.map(renderTaskCard).join('')}
+            </div>`;
+    }).join('');
+}
+
+function renderTaskCard(t) {
+    const cls = urgencyClass(t);
+    const sup = t.support ? `<div class="sup">+ ${escapeHtml(t.support)}</div>` : '';
+    const badge = t.priority && t.priority.includes('HERO') ? '<span class="badge hero">HERO</span>' : '';
+    const meta = [];
+    if (filterState.tab === 'pillar') {
+        meta.push(`<span class="lead">${escapeHtml(t.lead)}</span>`);
+    } else {
+        meta.push(`<span class="pillar">${escapeHtml(t.pillar)}</span>`);
+    }
+    if (t.deadlineStr) {
+        meta.push(`<span class="deadline">${escapeHtml(t.deadlineStr)}</span>`);
+        meta.push(`<span class="rel">${escapeHtml(relDays(t.days))}</span>`);
+    } else {
+        meta.push('<span class="rel" style="color:#999;font-style:italic;">no deadline</span>');
+    }
+    if (t.status === 'On Hold') meta.push(`<span class="rel">on hold</span>`);
+    return `
+        <div class="task ${cls}">
+            <div class="dot"></div>
+            <div class="body-col">
+                <div class="title">${escapeHtml(t.initiative)}${badge}</div>
+                <div class="meta">${meta.join('')}</div>
+                ${sup}
+            </div>
+        </div>`;
+}
+
+function renderFlat(list) {
+    const { col, dir } = filterState.flatSort;
+    const mult = dir === 'asc' ? 1 : -1;
+    const sortFn = {
+        initiative: (a, b) => a.initiative.localeCompare(b.initiative) * mult,
+        pillar: (a, b) => a.pillar.localeCompare(b.pillar) * mult,
+        lead: (a, b) => a.lead.localeCompare(b.lead) * mult,
+        deadline: (a, b) => {
+            if (a.deadline === null && b.deadline === null) return 0;
+            if (a.deadline === null) return 1;
+            if (b.deadline === null) return -1;
+            return (a.deadline - b.deadline) * mult;
+        },
+        days: (a, b) => {
+            if (a.days === null && b.days === null) return 0;
+            if (a.days === null) return 1;
+            if (b.days === null) return -1;
+            return (a.days - b.days) * mult;
+        },
+        status: (a, b) => a.status.localeCompare(b.status) * mult
+    }[col] || ((a, b) => 0);
+    const sorted = list.slice().sort(sortFn);
+
+    const arrow = (c) => {
+        if (col !== c) return '<span class="arrow">↕</span>';
+        return dir === 'asc' ? '<span class="arrow">↑</span>' : '<span class="arrow">↓</span>';
+    };
+    const headerCell = (key, label) => {
+        const active = col === key ? ' active' : '';
+        return `<span class="sort-h${active}" data-sort="${key}">${label}${arrow(key)}</span>`;
+    };
+
+    const header = `
+        <div class="flat-row" style="font-weight:700;color:#666;background:#F5F5F5;border-bottom:2px solid #E0E0E0;font-size:11px;text-transform:uppercase;letter-spacing:0.4px;">
+            <span></span>
+            ${headerCell('initiative', 'Initiative')}
+            ${headerCell('pillar', 'Pillar')}
+            ${headerCell('lead', 'Lead')}
+            ${headerCell('deadline', 'Deadline')}
+            ${headerCell('days', 'Days')}
+            ${headerCell('status', 'Status')}
+        </div>`;
+    const rows = sorted.map(t => {
+        const cls = urgencyClass(t);
+        const dotColor = {red:'#D32F2F', amber:'#F57C00', green:'#2E7D32', done:'#9E9E9E', held:'#B45F06', active:'#1F4E79'}[cls];
+        const daysCol = t.days === null ? '—' :
+            (t.days < 0 ? `<span style="color:#C62828;font-weight:600;">${Math.abs(t.days)}d</span>` :
+             t.days <= 14 ? `<span style="color:#E65100;font-weight:600;">${t.days}d</span>` :
+             `${t.days}d`);
+        return `
+            <div class="flat-row">
+                <span style="width:8px;height:8px;border-radius:50%;background:${dotColor};"></span>
+                <span style="font-weight:500;">${escapeHtml(t.initiative)}</span>
+                <span style="color:#666;font-size:10px;line-height:1.3;">${escapeHtml(t.pillar)}</span>
+                <span>${escapeHtml(t.lead)}</span>
+                <span>${escapeHtml(t.deadlineStr || '—')}</span>
+                <span>${daysCol}</span>
+                <span>${statusPill(t.status)}</span>
+            </div>`;
+    }).join('');
+    return header + rows;
+}
+
+// ============ SIDEBAR ============
+function renderSidebar() {
+    const overdue = tasks.filter(t => t.days !== null && t.days < 0 && t.status !== 'Done' && t.status !== 'On Hold')
+        .sort((a, b) => a.days - b.days);
+    const atrisk = tasks.filter(t => t.days !== null && t.days >= 0 && t.days <= 14 && t.status === 'Not Started')
+        .sort((a, b) => a.days - b.days);
+    const onhold = tasks.filter(t => t.status === 'On Hold');
+
+    const sidebar = document.getElementById('sidebar');
+    sidebar.innerHTML = `
+        ${renderSideSection('overdue', 'Overdue', overdue, t => `<span class="days">${Math.abs(t.days)}d</span>`)}
+        ${renderSideSection('atrisk', 'At risk · ≤14d', atrisk, t => `<span class="days">in ${t.days}d</span>`)}
+        ${renderSideSection('onhold', 'On hold', onhold, t => '', true)}
+    `;
+}
+
+function renderSideSection(key, label, items, daysFn, withReason = false) {
+    const cap = 5;
+    const expanded = sidebarExpanded[key];
+    const visible = expanded ? items : items.slice(0, cap);
+    const overflow = items.length - cap;
+
+    const itemsHtml = visible.map(t => {
+        const reason = withReason && t.details ?
+            `<span class="reason">${escapeHtml(t.details.replace(/^[\s-]+/, ''))}</span>` : '';
+        return `
+            <div class="side-item">
+                <span class="name">
+                    ${escapeHtml(t.initiative)}
+                    <span class="who">${escapeHtml(t.lead)}</span>
+                    ${reason}
+                </span>
+                ${daysFn(t)}
+            </div>`;
+    }).join('');
+
+    const moreBtn = overflow > 0 && !expanded ?
+        `<button class="more-link" data-section="${key}">+ ${overflow} more</button>` :
+        (expanded && items.length > cap ? `<button class="more-link" data-section="${key}">show less</button>` : '');
+
+    const empty = items.length === 0 ? '<div class="side-empty">None right now</div>' : '';
+
+    return `
+        <div class="side-section ${key}">
+            <div class="heading"><span>${label}</span><span class="count-badge">${items.length}</span></div>
+            ${empty}
+            ${itemsHtml}
+            ${moreBtn}
+        </div>`;
+}
+
+// ============ EVENTS ============
+function bindEvents() {
+    document.getElementById('refreshBtn').addEventListener('click', loadData);
+
+    document.getElementById('search').addEventListener('input', (e) => {
+        filterState.search = e.target.value; render();
+    });
+    document.getElementById('fPerson').addEventListener('change', (e) => {
+        filterState.person = e.target.value; render();
+    });
+    document.getElementById('fPillar').addEventListener('change', (e) => {
+        filterState.pillar = e.target.value; render();
+    });
+    document.getElementById('fStatus').addEventListener('change', (e) => {
+        filterState.status = e.target.value; render();
+    });
+    document.getElementById('fMe').addEventListener('change', (e) => {
+        filterState.me = e.target.value;
+        if (e.target.value) localStorage.setItem('od_tracker_me', e.target.value);
+        else localStorage.removeItem('od_tracker_me');
+        render();
+    });
+    document.getElementById('meIncludeSupport').addEventListener('change', (e) => {
+        filterState.meIncludeSupport = e.target.checked;
+        localStorage.setItem('od_tracker_meIncludeSupport', e.target.checked ? '1' : '0');
+        render();
+    });
+    document.getElementById('showDone').addEventListener('change', (e) => {
+        filterState.showDone = e.target.checked; render();
+    });
+
+    document.querySelectorAll('#dateChips .chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('#dateChips .chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            filterState.datePreset = chip.dataset.preset;
+            const [from, to] = dateRangeForPreset(chip.dataset.preset);
+            filterState.dateFrom = from; filterState.dateTo = to;
+            render();
+        });
+    });
+    document.querySelector('#dateChips .chip[data-preset="all"]').classList.add('active');
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            filterState.tab = tab.dataset.tab;
+            render();
+        });
+    });
+
+    // Column-click sort on flat list (delegated)
+    document.getElementById('main').addEventListener('click', (e) => {
+        const h = e.target.closest('.sort-h');
+        if (!h) return;
+        const col = h.dataset.sort;
+        if (filterState.flatSort.col === col) {
+            filterState.flatSort.dir = filterState.flatSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+            filterState.flatSort.col = col;
+            filterState.flatSort.dir = 'asc';
+        }
+        renderMain();
+    });
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+        document.getElementById('search').value = '';
+        document.getElementById('fPerson').value = '';
+        document.getElementById('fPillar').value = '';
+        document.getElementById('fStatus').value = '';
+        document.getElementById('showDone').checked = false;
+        document.getElementById('meIncludeSupport').checked = false;
+        document.querySelectorAll('#dateChips .chip').forEach(c => c.classList.remove('active'));
+        document.querySelector('#dateChips .chip[data-preset="all"]').classList.add('active');
+        // Don't clear "me" — it's a personal preference, not a session filter
+        Object.assign(filterState, {
+            search: '', person: '', pillar: '', status: '',
+            datePreset: 'all', dateFrom: null, dateTo: null,
+            meIncludeSupport: false, showDone: false
+        });
+        localStorage.removeItem('od_tracker_meIncludeSupport');
+        render();
+    });
+
+    // Sidebar more/less buttons (delegated since rendered dynamically)
+    document.getElementById('sidebar').addEventListener('click', (e) => {
+        const btn = e.target.closest('.more-link');
+        if (!btn) return;
+        const key = btn.dataset.section;
+        sidebarExpanded[key] = !sidebarExpanded[key];
+        renderSidebar();
+    });
+}
+
+// ============ BOOT ============
+bindEvents();
+loadData();
+</script>
+
+</body>
+</html>
